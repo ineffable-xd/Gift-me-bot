@@ -1,93 +1,98 @@
-import requests
+import os
 import random
 import telebot
+import requests
+import json
 from datetime import datetime
 
-# Your bot token
-BOT_TOKEN = TELEGRAM_API_TOKEN
-bot = telebot.TeleBot(BOT_TOKEN)
+# Retrieve the Telegram Bot Token from environment variables
+TELEGRAM_API_TOKEN = os.getenv('TELEGRAM_API_TOKEN')
+if not TELEGRAM_API_TOKEN:
+    raise ValueError("Telegram bot token not found in environment variables.")
 
-# Replace with your Telegram user or chat ID
-TELEGRAM_USER_ID = "1972239827"
+# Initialize the bot
+bot = telebot.TeleBot(TELEGRAM_API_TOKEN)
 
-# GitHub URLs for gifts and random messages
+# URL of the JSON file containing gifts and random messages
 GIFTS_JSON_URL = "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/gifts.json"
-MESSAGES_TXT_URL = "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/random_messages.txt"
+RANDOM_MESSAGES_URL = "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/random_messages.txt"
 
-# Tracking gift counts per user (daily limit)
-user_gift_counts = {}
-max_gifts_per_day = 6
+# Store the used gifts count (you may need to use a persistent storage like a database in production)
+user_gift_count = {}
 
-# Fetch text file content (random messages)
-def fetch_text_file(url):
+# Function to fetch gifts from the GitHub repo
+def fetch_gifts():
     try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.text.splitlines()
+        response = requests.get(GIFTS_JSON_URL)
+        response.raise_for_status()  # Check if the request was successful
+        gifts = response.json()
+        return gifts
     except requests.RequestException as e:
-        print(f"Error fetching text file: {e}")
+        print(f"Error fetching gifts: {e}")
         return []
 
-# Fetch JSON data (gifts list)
-def fetch_json(url):
+# Function to fetch random messages from GitHub repo
+def fetch_random_messages():
     try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
+        response = requests.get(RANDOM_MESSAGES_URL)
+        response.raise_for_status()  # Check if the request was successful
+        messages = response.text.splitlines()
+        return messages
     except requests.RequestException as e:
-        print(f"Error fetching JSON data: {e}")
-        return None
+        print(f"Error fetching random messages: {e}")
+        return []
 
-# Fetch random gift from GitHub
-def fetch_random_gift():
-    gifts_data = fetch_json(GIFTS_JSON_URL)
-    if gifts_data and "gifts" in gifts_data:
-        return random.choice(gifts_data["gifts"])
-    return None
-
-# Fetch random message from the text file
-def fetch_random_message():
-    messages = fetch_text_file(MESSAGES_TXT_URL)
-    if messages:
-        return random.choice(messages)
-    return "Keep shining! 🌟"
-
-# Command to handle /giftme
-@bot.message_handler(commands=['giftme'])
-def handle_gift_request(message):
-    global user_gift_counts
-
-    # Get the user ID and check how many gifts they have received today
-    user_id = message.from_user.id
-    today_date = datetime.today().date()
-
-    # Initialize or reset count for the user on a new day
-    if user_id not in user_gift_counts or user_gift_counts[user_id]["date"] != today_date:
-        user_gift_counts[user_id] = {"count": 0, "date": today_date}
-
-    # Check if the user has already reached the daily gift limit
-    if user_gift_counts[user_id]["count"] >= max_gifts_per_day:
-        # Send a random message instead of a gift
-        random_message = fetch_random_message()
-        bot.send_message(user_id, random_message)
+# Send a random gift to the user
+def send_random_gift(message):
+    user_id = message.chat.id
+    
+    # Check if the user has already received a gift 6 times today
+    today = datetime.now().date()
+    if user_id not in user_gift_count:
+        user_gift_count[user_id] = {"count": 0, "date": today}
+    
+    if user_gift_count[user_id]["date"] == today and user_gift_count[user_id]["count"] >= 6:
+        bot.send_message(user_id, "You have already received your daily limit of 6 gifts. Please try again tomorrow.")
         return
+    
+    # Fetch the gifts and select a random one
+    gifts = fetch_gifts()
+    if not gifts:
+        bot.send_message(user_id, "Sorry, no gifts available at the moment.")
+        return
+    
+    gift = random.choice(gifts)
+    gift_name = gift.get('name', 'Unknown Gift')
+    gift_link = gift.get('link', '')
+    
+    # Send the gift to the user
+    bot.send_message(user_id, f"Here is your random gift: {gift_name}\nLink: {gift_link}")
+    
+    # Increment gift count for today
+    user_gift_count[user_id]["count"] += 1
 
-    # Otherwise, send a random gift
-    random_gift = fetch_random_gift()
-    if random_gift:
-        gift_url = random_gift["link"]
-        bot.send_message(user_id, f"Here is your gift: {gift_url}")
-        
-        # Update the user's gift count for the day
-        user_gift_counts[user_id]["count"] += 1
-    else:
-        bot.send_message(user_id, "Sorry, no gifts are available right now.")
+# Send a random message to the user
+def send_random_message(message):
+    user_id = message.chat.id
+    messages = fetch_random_messages()
+    if not messages:
+        bot.send_message(user_id, "Sorry, no random messages available at the moment.")
+        return
+    
+    random_message = random.choice(messages)
+    bot.send_message(user_id, random_message)
 
-# Function to reset daily counts (optional, for maintenance purposes)
-def reset_daily_counts():
-    global user_gift_counts
-    user_gift_counts = {}
+# Command to trigger the random gift
+@bot.message_handler(commands=['giftme'])
+def handle_giftme(message):
+    send_random_gift(message)
+
+# Command to trigger a random message (in case the user uses all 6 gifts)
+@bot.message_handler(commands=['randommessage'])
+def handle_random_message(message):
+    send_random_message(message)
 
 # Start the bot
-if __name__ == '__main__':
-    bot.polling(none_stop=True)
+if __name__ == "__main__":
+    print("Bot started.")
+    bot.polling()
