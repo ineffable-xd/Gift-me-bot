@@ -1,3 +1,1 @@
 pyTelegramBotAPI==4.9.0
-apscheduler==3.10.1
-python==3.12.7
