@@ -4,8 +4,14 @@ import logging
 import os
 import time
 
-# Initialize the bot with the Scalingo environment variable for the token
-API_TOKEN = os.environ.get('API_TOKEN')  # Use the Scalingo variable
+# Fetch the API token only once from environment variables
+API_TOKEN = os.environ.get('API_TOKEN')
+
+# Check if the token is available
+if not API_TOKEN:
+    raise ValueError("API token is missing! Please set the 'API_TOKEN' environment variable.")
+
+# Initialize the bot with the fetched API token
 bot = telebot.TeleBot(API_TOKEN)
 
 # Sample gifts and messages for the bot to send
