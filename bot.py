@@ -1,95 +1,93 @@
-import os
+import requests
 import random
 import telebot
-import google.auth
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from dotenv import load_dotenv
+from datetime import datetime
 
-# Load environment variables from .env file
-load_dotenv()
+# Your bot token
+BOT_TOKEN = "your_bot_token_here"
+bot = telebot.TeleBot(BOT_TOKEN)
 
-# Bot setup
-TOKEN = os.getenv("TELEGRAM_API_TOKEN")
-bot = telebot.TeleBot(TOKEN)
+# Replace with your Telegram user or chat ID
+TELEGRAM_USER_ID = "your_telegram_user_id_here"
 
-# Telegram user ID to send messages to (replace with your user ID)
-TELEGRAM_USER_ID = os.getenv("TELEGRAM_USER_ID")
+# GitHub URLs for gifts and random messages
+GIFTS_JSON_URL = "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/gifts.json"
+MESSAGES_TXT_URL = "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/random_messages.txt"
 
-# File with random messages
-RANDOM_MESSAGES_FILE = os.getenv("RANDOM_MESSAGES_FILE")
+# Tracking gift counts per user (daily limit)
+user_gift_counts = {}
+max_gifts_per_day = 6
 
-# Function to authenticate Google Drive and send status to Telegram DM
-def authenticate_google_drive():
+# Fetch text file content (random messages)
+def fetch_text_file(url):
     try:
-        credentials, project = google.auth.load_credentials_from_file(os.getenv("GOOGLE_CREDENTIALS"))
-        drive_service = build("drive", "v3", credentials=credentials)
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.text.splitlines()
+    except requests.RequestException as e:
+        print(f"Error fetching text file: {e}")
+        return []
+
+# Fetch JSON data (gifts list)
+def fetch_json(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        print(f"Error fetching JSON data: {e}")
+        return None
+
+# Fetch random gift from GitHub
+def fetch_random_gift():
+    gifts_data = fetch_json(GIFTS_JSON_URL)
+    if gifts_data and "gifts" in gifts_data:
+        return random.choice(gifts_data["gifts"])
+    return None
+
+# Fetch random message from the text file
+def fetch_random_message():
+    messages = fetch_text_file(MESSAGES_TXT_URL)
+    if messages:
+        return random.choice(messages)
+    return "Keep shining! 🌟"
+
+# Command to handle /giftme
+@bot.message_handler(commands=['giftme'])
+def handle_gift_request(message):
+    global user_gift_counts
+
+    # Get the user ID and check how many gifts they have received today
+    user_id = message.from_user.id
+    today_date = datetime.today().date()
+
+    # Initialize or reset count for the user on a new day
+    if user_id not in user_gift_counts or user_gift_counts[user_id]["date"] != today_date:
+        user_gift_counts[user_id] = {"count": 0, "date": today_date}
+
+    # Check if the user has already reached the daily gift limit
+    if user_gift_counts[user_id]["count"] >= max_gifts_per_day:
+        # Send a random message instead of a gift
+        random_message = fetch_random_message()
+        bot.send_message(user_id, random_message)
+        return
+
+    # Otherwise, send a random gift
+    random_gift = fetch_random_gift()
+    if random_gift:
+        gift_url = random_gift["link"]
+        bot.send_message(user_id, f"Here is your gift: {gift_url}")
         
-        # Testing if we can retrieve files from the drive
-        folder_id = os.getenv("FOLDER_ID")
-        query = f"'{folder_id}' in parents"
-        results = drive_service.files().list(q=query).execute()
-        files = results.get("files", [])
-        
-        # Send success message to Telegram DM
-        bot.send_message(TELEGRAM_USER_ID, "Successfully authenticated with Google Drive!")
-        print(f"Authenticated as project: {project}")
-        return True
+        # Update the user's gift count for the day
+        user_gift_counts[user_id]["count"] += 1
+    else:
+        bot.send_message(user_id, "Sorry, no gifts are available right now.")
 
-    except google.auth.exceptions.DefaultCredentialsError as e:
-        # Send failure message to Telegram DM
-        bot.send_message(TELEGRAM_USER_ID, f"Google Drive authentication failed: {e}")
-        print(f"Google authentication failed: {e}")
-        return False
-    except HttpError as e:
-        # Send failure message to Telegram DM
-        bot.send_message(TELEGRAM_USER_ID, f"Google Drive API error: {e}")
-        print(f"Google API error: {e}")
-        return False
-    except Exception as e:
-        # Handle any other errors
-        bot.send_message(TELEGRAM_USER_ID, f"An error occurred while authenticating: {e}")
-        print(f"An error occurred: {e}")
-        return False
+# Function to reset daily counts (optional, for maintenance purposes)
+def reset_daily_counts():
+    global user_gift_counts
+    user_gift_counts = {}
 
-# Command handler for /hello
-@bot.message_handler(commands=["hello"])
-def hello(message):
-    print("Received /hello command")  # Debugging message
-    bot.send_message(message.chat.id, "Hello there! How can I assist you today?")
-
-# Command handler for /hi
-@bot.message_handler(commands=["hi"])
-def hi(message):
-    print("Received /hi command")  # Debugging message
-    bot.send_message(message.chat.id, "Hi! How's it going?")
-
-# Command handler for /giftme
-@bot.message_handler(commands=["giftme"])
-def giftme(message):
-    print("Received /giftme command")  # Debugging message
-
-    # Simulating a gift (for debugging)
-    gift = "Random Wallpaper"
-    print(f"Sending gift: {gift}")  # Debugging message
-    bot.send_message(message.chat.id, f"Here’s your gift! {gift}")
-
-# Command handler for /start
-@bot.message_handler(commands=["start"])
-def start(message):
-    print("Received /start command")  # Debugging message
-    bot.send_message(message.chat.id, "Bot is running successfully!")
-
-# Error handling to log any unexpected issues
-@bot.message_handler(func=lambda message: True)
-def handle_all_messages(message):
-    print(f"Received message: {message.text}")  # Debugging message
-
-# Run the bot
-if __name__ == "__main__":
-    print("Bot starting...")  # Debugging message
-    
-    # Authenticate with Google Drive and send login status to Telegram DM
-    authenticate_google_drive()
-
+# Start the bot
+if __name__ == '__main__':
     bot.polling(none_stop=True)
