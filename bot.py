@@ -19,6 +19,10 @@ GIFTS = [
     # Add more gift links here
 ]
 
+# Check if the GIFTS list is not empty
+if not GIFTS:
+    raise ValueError("GIFTS list is empty, add some gift links")
+
 # List of random messages (replace with actual random messages)
 RANDOM_MESSAGES = [
     "Thank you for using the bot!",
@@ -43,10 +47,17 @@ def handle_giftme(message):
         gift_counter[user_id] = 0
 
     if gift_counter[user_id] < 6:
-        # Send a random gift link from the GIFTS list
-        gift = random.choice(GIFTS)
-        bot.send_message(user_id, f"Here's your gift: {gift}")
-        gift_counter[user_id] += 1
+        try:
+            # Ensure the GIFTS list is not empty
+            if not GIFTS:
+                bot.send_message(user_id, "Sorry, no gifts are available right now.")
+                return
+            # Send a random gift link from the GIFTS list
+            gift = random.choice(GIFTS)
+            bot.send_message(user_id, f"Here's your gift: {gift}")
+            gift_counter[user_id] += 1
+        except Exception as e:
+            bot.send_message(user_id, f"An error occurred while fetching a gift: {e}")
     else:
         # After 6 requests, send a random message from the RANDOM_MESSAGES list
         random_message = random.choice(RANDOM_MESSAGES)
