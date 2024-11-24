@@ -14,7 +14,7 @@ TOKEN = os.getenv("TELEGRAM_API_TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
 # Telegram user ID to send messages to (replace with your user ID)
-TELEGRAM_USER_ID = os.getenv("1972239827")
+TELEGRAM_USER_ID = os.getenv("TELEGRAM_USER_ID")
 
 # File with random messages
 RANDOM_MESSAGES_FILE = os.getenv("RANDOM_MESSAGES_FILE")
