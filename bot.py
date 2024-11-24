@@ -5,7 +5,7 @@ import os
 import time
 
 # Fetch the API token only once from environment variables
-API_TOKEN = os.environ.get('API_TOKEN')
+API_TOKEN = "7571171685:AAG-cbHDHzGq-bossU-lzG2uVLxLNc-YIRM"
 
 # Check if the token is available
 if not API_TOKEN:
