@@ -1,48 +1,94 @@
-import telebot
+import os
 import random
 import logging
-import time
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram import Bot
 
-# Setup logging to show detailed errors
-logging.basicConfig(level=logging.DEBUG)
+# Get the bot token from Scalingo environment variable
+TOKEN = os.getenv('TOKEN')
+USER_ID = 1972239827  # Your Telegram user ID
 
-# Define the API token directly in the code
-API_TOKEN = "7571171685:AAG-cbHDHzGq-bossU-lzG2uVLxLNc-YIRM"  # Replace with your actual token
-bot = telebot.TeleBot(API_TOKEN)
+# List of gift links to be sent
+gift_links = [
+    "https://example.com/gift1",
+    "https://example.com/gift2",
+    "https://example.com/gift3",
+    "https://example.com/gift4",
+    "https://example.com/gift5",
+    "https://example.com/gift6",
+    "https://example.com/gift7",
+]
 
-# Sample gifts and messages for the bot to send
-gifts = ["https://example.com/gift1", "https://example.com/gift2", "https://example.com/gift3"]
-random_messages = ["Here's a random message!", "Enjoy your day!", "Hope you're doing well!", "Stay awesome!"]
+# Random text to send after 6 gifts
+random_text = [
+    "Here's a little surprise for you! 🎁",
+    "You deserve something special today! 💫",
+    "Hope this brightens your day! ✨",
+    "Enjoy your gift! 🎉",
+    "A small token of appreciation for you! 💖",
+    "You're awesome! Here's a surprise! 💌",
+]
 
-# Create a dictionary to track the number of gifts sent to each user
-gift_sent_count = {}
+# Track how many times the user has received gifts
+user_gift_count = {}
 
-# Function to handle the /giftme command
-def handle_giftme(message):
-    user_id = message.from_user.id
+# Setup logging to send logs to your Telegram ID
+def send_log(message: str):
+    bot = Bot(token=TOKEN)
+    bot.send_message(chat_id=USER_ID, text=message)
 
-    if user_id not in gift_sent_count:
-        gift_sent_count[user_id] = 0
+# Setup logging to file and console
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-    if gift_sent_count[user_id] < 6:
-        gift = random.choice(gifts)
-        bot.reply_to(message, gift)
-        gift_sent_count[user_id] += 1
-        logging.info(f"Gift sent to {user_id}. Total gifts sent: {gift_sent_count[user_id]}")
+def send_gift(update: Update, context: CallbackContext):
+    user_id = update.message.chat_id
+
+    # Initialize gift count if user is new
+    if user_id not in user_gift_count:
+        user_gift_count[user_id] = 0
+
+    # Log gift sending activity
+    logger.info(f"User {user_id} requested a gift.")
+
+    # Check if the user has received 6 gifts already
+    if user_gift_count[user_id] < 6:
+        # Send a gift link
+        gift_link = random.choice(gift_links)
+        update.message.reply_text(gift_link)
+        user_gift_count[user_id] += 1
+        send_log(f"Gift sent to {user_id}: {gift_link}")
     else:
-        random_message = random.choice(random_messages)
-        bot.reply_to(message, random_message)
-        logging.info(f"Sent random message to {user_id}")
+        # Send a random message from random_text after 6 gifts
+        random_message = random.choice(random_text)
+        update.message.reply_text(random_message)
+        user_gift_count[user_id] = 0  # Reset the gift count after sending the random message
+        send_log(f"Random message sent to {user_id}: {random_message}")
 
-# Set up a command handler for /giftme
-@bot.message_handler(commands=['giftme'])
-def giftme_command(message):
-    handle_giftme(message)
+def main():
+    # Ensure that the token is available
+    if not TOKEN:
+        raise ValueError("No token found! Please set the 'TOKEN' environment variable.")
+    
+    # Create the Updater object and attach the bot token
+    updater = Updater(TOKEN, use_context=True)
 
-# Run the bot without the loop
+    # Get the dispatcher to register handlers
+    dispatcher = updater.dispatcher
+
+    # Register command handlers
+    dispatcher.add_handler(CommandHandler("surprise", send_gift))
+    dispatcher.add_handler(CommandHandler("giftme", send_gift))
+
+    # Send a start log to your Telegram ID
+    send_log("Bot started successfully!")
+
+    # Start the Bot
+    updater.start_polling()
+
+    # Run the bot until you send a signal to stop (Ctrl+C)
+    updater.idle()
+
 if __name__ == '__main__':
-    logging.info("Starting bot...")
-    try:
-        bot.polling(none_stop=True)  # Start polling, no loop for retries
-    except Exception as e:
-        logging.error(f"Error in bot polling: {e}")
+    main()
