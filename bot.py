@@ -14,12 +14,15 @@ if TELEGRAM_API_TOKEN is None:
 # Initialize the bot
 bot = telebot.TeleBot(TELEGRAM_API_TOKEN)
 
-# Telegram chat ID for logging purposes (change this to the chat ID you want to send logs to)
-LOG_CHAT_ID = 'YOUR_CHAT_ID'  # Replace with your chat ID
+# Telegram chat ID for logging purposes (ensure this is correct)
+LOG_CHAT_ID = '1972239827'  # Replace with the correct chat ID (it should be a valid numeric ID)
 
 # List of gift links (replace with actual gift links)
 GIFTS = [
+    "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/gifts/gift1.tex",
+    "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/gifts/gift1.tex",
     "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/gifts/gift1.tex"
+    # Add more gift links here
 ]
 
 # List of random messages (replace with actual random messages)
@@ -39,7 +42,10 @@ gift_counter = {}
 # Function to send log messages to Telegram (for debugging)
 def send_log_to_telegram(log_message):
     try:
-        bot.send_message(LOG_CHAT_ID, log_message)
+        if LOG_CHAT_ID.isnumeric():  # Ensure that the chat ID is numeric
+            bot.send_message(LOG_CHAT_ID, log_message)
+        else:
+            print("Invalid LOG_CHAT_ID")
     except Exception as e:
         print(f"Error sending log to Telegram: {e}")
 
