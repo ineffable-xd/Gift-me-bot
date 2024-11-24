@@ -1,14 +1,16 @@
 import telebot
-import random
 import os
-from datetime import datetime
+from flask import Flask, request
 
-# Telegram bot token and your Telegram ID from environment variables
+# Telegram bot token and your Telegram ID
 API_TOKEN = os.getenv('TELEGRAM_API_TOKEN')
 MY_TELEGRAM_ID = '1972239827'  # Replace with your Telegram ID
 
 # Create the bot instance
 bot = telebot.TeleBot(API_TOKEN)
+
+# Create the Flask app to handle webhook
+app = Flask(__name__)
 
 # Define the gift list
 GIFT_LIST = [
@@ -67,5 +69,23 @@ def handle_message(message):
     log_message = f"User {user_id} sent: {message.text}"
     bot.send_message(MY_TELEGRAM_ID, log_message)
 
-# Start polling the bot
-bot.polling()
+# Route to handle the webhook
+@app.route('/' + API_TOKEN, methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return '', 200
+
+# Set webhook
+@app.route('/set_webhook', methods=['GET'])
+def set_webhook():
+    webhook_url = f"https://{os.getenv('HOSTNAME')}/{API_TOKEN}"
+    bot.remove_webhook()
+    bot.set_webhook(url=webhook_url)
+    return "Webhook set successfully!", 200
+
+if __name__ == "__main__":
+    # Set the webhook on the server startup
+    set_webhook()
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
