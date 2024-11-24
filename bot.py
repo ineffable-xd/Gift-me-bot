@@ -1,5 +1,6 @@
 import os
 import random
+import time
 import telebot
 
 # Use the Telegram API token from Scalingo environment variable
@@ -15,7 +16,6 @@ bot = telebot.TeleBot(TELEGRAM_API_TOKEN)
 # List of gift links (replace with actual gift links)
 GIFTS = [
     "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/gifts/gift1.tex"
-    
     # Add more gift links here
 ]
 
@@ -59,5 +59,17 @@ def reset_gift_counter(message):
     gift_counter[user_id] = 0
     bot.send_message(user_id, "Your gift counter has been reset. You can now request gifts again!")
 
-# Start the bot
-bot.polling(none_stop=True)
+# Function to start the bot and keep it running indefinitely
+def run_bot():
+    while True:
+        try:
+            # Start polling the bot to keep it active
+            print("Bot started...")
+            bot.polling(none_stop=True, interval=0)
+        except Exception as e:
+            # If an error occurs, log it and restart the bot after a delay
+            print(f"Error occurred: {e}")
+            time.sleep(5)  # Wait for 5 seconds before restarting
+
+if __name__ == "__main__":
+    run_bot()
