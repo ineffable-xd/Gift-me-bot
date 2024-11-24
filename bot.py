@@ -7,7 +7,7 @@ import time
 logging.basicConfig(level=logging.DEBUG)
 
 # Define the API token directly in the code
-API_TOKEN = '7571171685:AAG-cbHDHzGq-bossU-lzG2uVLxLNc-YIRM'  # Replace with your actual token
+API_TOKEN = "7571171685:AAG-cbHDHzGq-bossU-lzG2uVLxLNc-YIRM"  # Replace with your actual token
 bot = telebot.TeleBot(API_TOKEN)
 
 # Sample gifts and messages for the bot to send
