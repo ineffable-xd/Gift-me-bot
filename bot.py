@@ -1,117 +1,52 @@
-import os
-import random
-import time
 import telebot
-import traceback
+import random
+import logging
+import os
+import time
 
-# Use the Telegram API token from Scalingo environment variable
-TELEGRAM_API_TOKEN = os.getenv('TELEGRAM_API_TOKEN')
+# Initialize the bot with the Scalingo environment variable for the token
+API_TOKEN = os.environ.get('API_TOKEN')  # Use the Scalingo variable
+bot = telebot.TeleBot(API_TOKEN)
 
-# Check if the token is available
-if TELEGRAM_API_TOKEN is None:
-    raise ValueError("TELEGRAM_API_TOKEN is not set")
+# Sample gifts and messages for the bot to send
+gifts = ["https://example.com/gift1", "https://example.com/gift2", "https://example.com/gift1"]
+random_messages = ["Here's a random message!", "Enjoy your day!", "Hope you're doing well!", "Stay awesome!"]
 
-# Initialize the bot
-bot = telebot.TeleBot(TELEGRAM_API_TOKEN)
+# Create a dictionary to track the number of gifts sent to each user
+gift_sent_count = {}
 
-# Telegram chat ID for logging purposes (ensure this is correct)
-LOG_CHAT_ID = '1972239827'  # Replace with the correct chat ID (it should be a valid numeric ID)
-
-# List of gift links (replace with actual gift links)
-GIFTS = [
-    "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/gifts/gift1.tex",
-    "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/gifts/gift1.tex",
-    "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/gifts/gift1.tex"
-    # Add more gift links here
-]
-
-# List of random messages (replace with actual random messages)
-RANDOM_MESSAGES = [
-    "Thank you for using the bot!",
-    "Hope you're having a great day!",
-    "Keep smiling, you're awesome!",
-    "Stay positive and keep going!",
-    "Life is good, enjoy it!",
-    "You're doing great, keep it up!"
-    # Add more random messages here
-]
-
-# Initialize a counter to track how many times a user has requested gifts
-gift_counter = {}
-
-# Function to send log messages to Telegram (for debugging)
-def send_log_to_telegram(log_message):
-    try:
-        if LOG_CHAT_ID.isnumeric():  # Ensure that the chat ID is numeric
-            bot.send_message(LOG_CHAT_ID, log_message)
-        else:
-            print("Invalid LOG_CHAT_ID")
-    except Exception as e:
-        print(f"Error sending log to Telegram: {e}")
-
-# Command to send a random gift link
-@bot.message_handler(commands=['giftme'])
+# Function to handle the /giftme command
 def handle_giftme(message):
-    try:
-        user_id = message.chat.id
-        send_log_to_telegram(f"Received /giftme command from user: {user_id}")
-        
-        # Initialize counter for the user if not already done
-        if user_id not in gift_counter:
-            gift_counter[user_id] = 0
-            send_log_to_telegram(f"Gift counter for user {user_id} initialized.")
-        
-        if gift_counter[user_id] < 6:
-            send_log_to_telegram(f"User {user_id} has requested gift #{gift_counter[user_id] + 1}.")
-            
-            # Ensure the GIFTS list is not empty
-            if not GIFTS:
-                bot.send_message(user_id, "Sorry, no gifts are available right now.")
-                send_log_to_telegram("GIFTS list is empty, no gift to send.")
-                return
-                
-            # Send a random gift link from the GIFTS list
-            gift = random.choice(GIFTS)
-            bot.send_message(user_id, f"Here's your gift: {gift}")
-            gift_counter[user_id] += 1
-            send_log_to_telegram(f"Sent gift to user {user_id}: {gift}. Gift count: {gift_counter[user_id]}")
-        else:
-            # After 6 requests, send a random message from the RANDOM_MESSAGES list
-            random_message = random.choice(RANDOM_MESSAGES)
-            bot.send_message(user_id, random_message)
-            send_log_to_telegram(f"User {user_id} has reached gift limit. Sent random message: {random_message}")
-    
-    except Exception as e:
-        error_message = f"Error in handle_giftme for user {message.chat.id}: {e}\n{traceback.format_exc()}"
-        send_log_to_telegram(error_message)
-        bot.send_message(message.chat.id, "An error occurred, please try again later.")
-        
-# Command to reset the gift counter (for testing purposes)
-@bot.message_handler(commands=['reset'])
-def reset_gift_counter(message):
-    try:
-        user_id = message.chat.id
-        gift_counter[user_id] = 0
-        bot.send_message(user_id, "Your gift counter has been reset. You can now request gifts again!")
-        send_log_to_telegram(f"Gift counter for user {user_id} has been reset.")
-    except Exception as e:
-        error_message = f"Error in reset_gift_counter for user {message.chat.id}: {e}\n{traceback.format_exc()}"
-        send_log_to_telegram(error_message)
-        bot.send_message(message.chat.id, "An error occurred, please try again later.")
-        
-# Function to start the bot and keep it running indefinitely
-def run_bot():
-    while True:
-        try:
-            # Start polling the bot to keep it active
-            send_log_to_telegram("Starting bot polling...")
-            print("Bot started...")
-            bot.polling(none_stop=True, interval=0)
-        except Exception as e:
-            # If an error occurs, log it and restart the bot after a delay
-            error_message = f"Error occurred in bot polling: {e}\n{traceback.format_exc()}"
-            send_log_to_telegram(error_message)
-            time.sleep(5)  # Wait for 5 seconds before restarting
+    user_id = message.from_user.id
 
-if __name__ == "__main__":
-    run_bot()
+    if user_id not in gift_sent_count:
+        gift_sent_count[user_id] = 0
+
+    if gift_sent_count[user_id] < 6:
+        gift = random.choice(gifts)
+        bot.reply_to(message, gift)
+        gift_sent_count[user_id] += 1
+        logging.info(f"Gift sent to {user_id}. Total gifts sent: {gift_sent_count[user_id]}")
+    else:
+        random_message = random.choice(random_messages)
+        bot.reply_to(message, random_message)
+        logging.info(f"Sent random message to {user_id}")
+
+# Set up a command handler for /giftme
+@bot.message_handler(commands=['giftme'])
+def giftme_command(message):
+    handle_giftme(message)
+
+# Start polling with error handling and logging
+def start_polling():
+    try:
+        logging.info("Bot started...")
+        bot.polling(none_stop=True)
+    except Exception as e:
+        logging.error(f"Error in bot polling: {e}")
+        time.sleep(5)  # Delay before restarting polling
+        start_polling()
+
+# Run the bot in a loop
+if __name__ == '__main__':
+    start_polling()
