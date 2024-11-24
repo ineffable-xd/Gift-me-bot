@@ -1,66 +1,67 @@
-import telebot
-from datetime import datetime
+import os
 import random
+import telebot
 
-API_TOKEN = os.getenv('TOKEN')
-bot = telebot.TeleBot(API_TOKEN)
+# Get the bot token from the environment variable
+TOKEN = os.getenv('TOKEN')
+USER_ID = 1972239827  # Your Telegram user ID
 
-# Variables to store data
-user_gift_count = {}
-reset_time = datetime.now().date()
+# List of gift links to be sent
 gift_links = [
     "https://example.com/gift1",
     "https://example.com/gift2",
     "https://example.com/gift3",
     "https://example.com/gift4",
     "https://example.com/gift5",
-    "https://example.com/gift6"
+    "https://example.com/gift6",
+    "https://example.com/gift7",
 ]
+
+# Random text to send after 6 gifts
 random_text = [
-    "Better luck tomorrow!",
-    "That's all the gifts for today!",
-    "Come back tomorrow for more gifts!",
-    "Today's gifts are finished. Try again tomorrow!"
+    "Here's a little surprise for you! 🎁",
+    "You deserve something special today! 💫",
+    "Hope this brightens your day! ✨",
+    "Enjoy your gift! 🎉",
+    "A small token of appreciation for you! 💖",
+    "You're awesome! Here's a surprise! 💌",
 ]
 
-# Customizable responses
-custom_responses = {
-    'welcome_message': "Welcome to the Gift Bot! Use /giftme to get your daily gifts.",
-    'limit_reached_message': "You’ve already received all your gifts for today.",
-    'gift_reset_message': "Gifts have been reset for the day! You can try again now."
-}
+# Track how many times the user has received gifts
+user_gift_count = {}
 
-# Reset function
-def reset_gift_count():
-    global user_gift_count, reset_time
-    current_date = datetime.now().date()
-    if reset_time != current_date:
-        user_gift_count = {}
-        reset_time = current_date
+# Initialize the bot
+bot = telebot.TeleBot(TOKEN)
 
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    bot.reply_to(message, custom_responses['welcome_message'])
+# Send logs to your Telegram account
+def send_log(message: str):
+    bot.send_message(chat_id=USER_ID, text=message)
 
-@bot.message_handler(commands=['giftme'])
+# Command to send gifts or random messages
+@bot.message_handler(commands=['surprise', 'giftme'])
 def send_gift(message):
-    reset_gift_count()
-    user_id = message.from_user.id
-    
-    # Check if the user has reached their limit
+    user_id = message.chat.id
+
+    # Initialize gift count if user is new
     if user_id not in user_gift_count:
         user_gift_count[user_id] = 0
-    
-    if user_gift_count[user_id] < 6:
-        gift = gift_links[user_gift_count[user_id] % len(gift_links)]
-        bot.reply_to(message, gift)
-        user_gift_count[user_id] += 1
-    else:
-        bot.reply_to(message, random.choice(random_text))
-        
-@bot.message_handler(commands=['reset'])
-def reset_command(message):
-    reset_gift_count()
-    bot.reply_to(message, custom_responses['gift_reset_message'])
 
+    # Check if the user has received 6 gifts already
+    if user_gift_count[user_id] < 6:
+        # Send a gift link
+        gift_link = random.choice(gift_links)
+        bot.reply_to(message, gift_link)
+        user_gift_count[user_id] += 1
+        send_log(f"Gift sent to {user_id}: {gift_link}")
+    else:
+        # Send a random message from random_text after 6 gifts
+        random_message = random.choice(random_text)
+        bot.reply_to(message, random_message)
+        user_gift_count[user_id] = 0  # Reset the gift count after sending the random message
+        send_log(f"Random message sent to {user_id}: {random_message}")
+
+# Notify when the bot starts
+send_log("Bot started successfully!")
+
+# Start polling to listen for messages
 bot.polling()
