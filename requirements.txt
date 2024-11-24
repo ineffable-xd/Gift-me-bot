@@ -1,4 +1,4 @@
-telebot==3.10.0
+pyTelegramBotAPI==3.10.0
 google-auth==2.18.0
 google-auth-oauthlib==0.6.0
 google-auth-httplib2==0.1.0
