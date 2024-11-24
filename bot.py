@@ -1,7 +1,7 @@
 import os
 import random
 import telebot
-import traceback
+from flask import Flask, request
 
 # Get the bot token and user ID from environment variables
 TOKEN = os.getenv('TOKEN')
@@ -12,6 +12,9 @@ if not TOKEN:
 
 # Initialize the bot
 bot = telebot.TeleBot(TOKEN)
+
+# Flask app for webhook
+app = Flask(__name__)
 
 # List of gift links to be sent
 gift_links = [
@@ -70,11 +73,22 @@ def send_gift(message):
         user_gift_count[user_id] = 0  # Reset the gift count
         send_log(f"Random message sent to {user_id}: {random_message}")
 
-# Start the bot and handle exceptions
-try:
+# Webhook route
+@app.route(f"/{TOKEN}", methods=["POST"])
+def webhook():
+    update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
+    bot.process_new_updates([update])
+    return "OK", 200
+
+# Set webhook on startup
+@app.before_first_request
+def setup_webhook():
+    webhook_url = f"https://{os.getenv('SCALINGO_APP_NAME')}.scalingo.io/{TOKEN}"
+    bot.remove_webhook()
+    bot.set_webhook(url=webhook_url)
+    send_log(f"Webhook set to {webhook_url}")
+
+# Start the Flask app
+if __name__ == "__main__":
     send_log("Bot is starting...")
-    bot.polling()
-except Exception as e:
-    error_message = f"Bot encountered an error: {traceback.format_exc()}"
-    send_log(error_message)
-    raise
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
