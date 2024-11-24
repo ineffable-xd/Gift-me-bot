@@ -4,11 +4,11 @@ import telebot
 from datetime import datetime
 
 # Your bot token
-BOT_TOKEN = "your_bot_token_here"
+BOT_TOKEN = TELEGRAM_API_TOKEN
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # Replace with your Telegram user or chat ID
-TELEGRAM_USER_ID = "your_telegram_user_id_here"
+TELEGRAM_USER_ID = "1972239827"
 
 # GitHub URLs for gifts and random messages
 GIFTS_JSON_URL = "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/gifts.json"
