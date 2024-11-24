@@ -1,11 +1,11 @@
 import telebot
 import random
-import time
+import os
 from datetime import datetime
 
-# Telegram bot token and your Telegram ID
-API_TOKEN = '7571171685:AAG-cbHDHzGq-bossU-lzG2uVLxLNc-YIRM'
-MY_TELEGRAM_ID = '1972239827'
+# Telegram bot token and your Telegram ID from environment variables
+API_TOKEN = os.getenv('TELEGRAM_API_TOKEN')
+MY_TELEGRAM_ID = '1972239827'  # Replace with your Telegram ID
 
 # Create the bot instance
 bot = telebot.TeleBot(API_TOKEN)
