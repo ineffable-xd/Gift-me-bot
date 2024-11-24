@@ -1,89 +1,71 @@
 import telebot
 import random
-import logging
 import time
 from datetime import datetime
-from apscheduler.schedulers.background import BackgroundScheduler
 
-API_TOKEN = '7571171685:AAG-cbHDHzGq-bossU-lzG2uVLxLNc-YIRM'  # Your bot API token
-MY_TELEGRAM_ID = 1972239827  # Your Telegram ID
+# Telegram bot token and your Telegram ID
+API_TOKEN = '7571171685:AAG-cbHDHzGq-bossU-lzG2uVLxLNc-YIRM'
+MY_TELEGRAM_ID = '1972239827'
 
+# Create the bot instance
 bot = telebot.TeleBot(API_TOKEN)
 
-# Define the random messages
-RANDOM_MESSAGES_FILE = [
-    "Hope you have a great day!",
-    "Don't forget to smile!",
-    "Keep up the good work!",
-    "Stay positive!",
-    "You're doing amazing!",
-    "Believe in yourself!"
-]
-
 # Define the gift list
-GIFTS = [
-    "http://example.com/gift1",  # Gift 1 URL
-    "http://example.com/gift2",  # Gift 2 URL
-    "http://example.com/gift3",  # Gift 3 URL
-    "http://example.com/gift4",  # Gift 4 URL
-    "http://example.com/gift5",  # Gift 5 URL
-    "http://example.com/gift6"   # Gift 6 URL
+GIFT_LIST = [
+    'https://example.com/gift1', 'https://example.com/gift2', 
+    'https://example.com/gift3', 'https://example.com/gift4', 
+    'https://example.com/gift5', 'https://example.com/gift6'
 ]
 
-# Initialize the user gift counter and logs
-user_gift_count = {}
-user_logs = []
+# Define random messages to send after 6 gifts
+RANDOM_MESSAGES_FILE = [
+    "Hope you're enjoying the gifts!", 
+    "Surprise! Here's a little something else for you.",
+    "Keep the fun going with more surprises!",
+    "Your gift awaits! Check it out!",
+    "Here's another treat just for you!",
+    "Enjoy your day with a bonus gift!"
+]
 
-# Function to send logs to the admin
-def send_log_to_admin(message):
-    bot.send_message(MY_TELEGRAM_ID, message)
+# Initialize variables to keep track of usage
+user_gift_counter = {}
+last_reset_date = datetime.now().date()
 
-# Function to reset the gift count at midnight
-def reset_gift_count():
-    global user_gift_count
-    user_gift_count = {}
-    send_log_to_admin("Gift count has been reset for all users.")
+# Function to check and reset the counter at midnight
+def reset_counter_if_new_day():
+    global last_reset_date
+    current_date = datetime.now().date()
+    if current_date != last_reset_date:
+        last_reset_date = current_date
+        user_gift_counter.clear()  # Reset all user counters
 
-# Schedule the reset function
-scheduler = BackgroundScheduler()
-scheduler.add_job(reset_gift_count, 'cron', hour=0, minute=0)  # Runs at midnight every day
-scheduler.start()
-
-# Handle /gift_me and /surprise commands
+# Command to send gifts and surprise
 @bot.message_handler(commands=['gift_me', 'surprise'])
-def handle_gift(message):
+def send_gift(message):
+    reset_counter_if_new_day()  # Reset counter if it's a new day
     user_id = message.from_user.id
-    text = message.text.lower()
+    user_gift_counter[user_id] = user_gift_counter.get(user_id, 0) + 1
 
-    if user_id not in user_gift_count:
-        user_gift_count[user_id] = 0
-
-    if user_gift_count[user_id] < 6:
+    if user_gift_counter[user_id] <= 6:
         # Send a gift from the list
-        gift_index = user_gift_count[user_id]
-        gift_link = GIFTS[gift_index]  # Select the corresponding gift
-        bot.send_message(user_id, f"Here is your gift: {gift_link}")
-        user_gift_count[user_id] += 1
+        gift = random.choice(GIFT_LIST)
+        bot.send_message(user_id, f"Here is your gift: {gift}")
     else:
         # Send a random message after 6 gifts
         random_message = random.choice(RANDOM_MESSAGES_FILE)
         bot.send_message(user_id, random_message)
 
-    # Log the interaction
-    log_message = f"User {user_id} ({message.from_user.first_name}) sent '{message.text}' and received: '{gift_link if user_gift_count[user_id] < 6 else random_message}'"
-    user_logs.append(log_message)
-    send_log_to_admin(log_message)
+    # Send log to your Telegram ID
+    log_message = f"User {user_id} requested a gift. Sent: {user_gift_counter[user_id] <= 6 and 'gift' or 'random message'}."
+    bot.send_message(MY_TELEGRAM_ID, log_message)
 
-# Handle all other messages
+# Function to handle all incoming messages (not only commands)
 @bot.message_handler(func=lambda message: True)
-def log_all_messages(message):
-    log_message = f"User {message.from_user.id} ({message.from_user.first_name}) sent: '{message.text}'"
-    user_logs.append(log_message)
-    send_log_to_admin(log_message)
+def handle_message(message):
+    user_id = message.from_user.id
+    # Log all user interactions
+    log_message = f"User {user_id} sent: {message.text}"
+    bot.send_message(MY_TELEGRAM_ID, log_message)
 
-# Polling to keep the bot running
-while True:
-    try:
-        bot.polling(none_stop=True)
-    except Exception as e:
-        time.sleep(15)
+# Start polling the bot
+bot.polling()
