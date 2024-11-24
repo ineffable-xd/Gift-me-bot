@@ -1,3 +1,0 @@
-mea=1
-vas2
-dfs3
