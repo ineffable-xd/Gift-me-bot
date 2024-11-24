@@ -1,0 +1,9 @@
+{
+  "gifts": [
+    {
+      "name": "Gift 1",
+      "type": "LaTeX Document",
+      "url": "https://raw.githubusercontent.com/ineffable-xd/Gift-me-bot/refs/heads/main/gifts/gift1.tex"
+    }
+  ]
+}
