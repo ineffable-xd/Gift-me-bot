@@ -1,21 +1,17 @@
 import telebot
 import random
 import logging
-import os
 import time
 
-# Fetch the API token only once from environment variables
-API_TOKEN = "7571171685:AAG-cbHDHzGq-bossU-lzG2uVLxLNc-YIRM"
+# Setup logging to show detailed errors
+logging.basicConfig(level=logging.DEBUG)
 
-# Check if the token is available
-if not API_TOKEN:
-    raise ValueError("API token is missing! Please set the 'API_TOKEN' environment variable.")
-
-# Initialize the bot with the fetched API token
+# Define the API token directly in the code
+API_TOKEN = '7571171685:AAG-cbHDHzGq-bossU-lzG2uVLxLNc-YIRM'  # Replace with your actual token
 bot = telebot.TeleBot(API_TOKEN)
 
 # Sample gifts and messages for the bot to send
-gifts = ["https://example.com/gift1", "https://example.com/gift2", "https://example.com/gift1"]
+gifts = ["https://example.com/gift1", "https://example.com/gift2", "https://example.com/gift3"]
 random_messages = ["Here's a random message!", "Enjoy your day!", "Hope you're doing well!", "Stay awesome!"]
 
 # Create a dictionary to track the number of gifts sent to each user
@@ -43,16 +39,10 @@ def handle_giftme(message):
 def giftme_command(message):
     handle_giftme(message)
 
-# Start polling with error handling and logging
-def start_polling():
+# Run the bot without the loop
+if __name__ == '__main__':
+    logging.info("Starting bot...")
     try:
-        logging.info("Bot started...")
-        bot.polling(none_stop=True)
+        bot.polling(none_stop=True)  # Start polling, no loop for retries
     except Exception as e:
         logging.error(f"Error in bot polling: {e}")
-        time.sleep(5)  # Delay before restarting polling
-        start_polling()
-
-# Run the bot in a loop
-if __name__ == '__main__':
-    start_polling()
